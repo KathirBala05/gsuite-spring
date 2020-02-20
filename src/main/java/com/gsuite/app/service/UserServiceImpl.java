@@ -46,34 +46,49 @@ public class UserServiceImpl implements UserService {
 
 	private static final String APPLICATION_NAME = "gsuite-spring";
 	private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
-	private static final java.io.File CREDENTIALS_FOLDER = new java.io.File(System.getProperty("user.home"), "credentials");
-	private static final String CLIENT_SECRET_FILE_NAME = "client_secret.json";
+	private static final String TOKENS_DIRECTORY_PATH = "tokens";
+	private static final String CREDENTIALS_FILE_PATH = "client_secret.json";
 	static List<String> SCOPES = new ArrayList<String>();
 
 	private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-		
+
 		SCOPES.add(DirectoryScopes.ADMIN_DIRECTORY_USER_READONLY);
-        SCOPES.add(DirectoryScopes.ADMIN_DIRECTORY_USER);
-        SCOPES.add(DirectoryScopes.ADMIN_DIRECTORY_GROUP);
-        SCOPES.add(DirectoryScopes.ADMIN_DIRECTORY_GROUP_MEMBER);
+		SCOPES.add(DirectoryScopes.ADMIN_DIRECTORY_USER);
+		SCOPES.add(DirectoryScopes.ADMIN_DIRECTORY_GROUP);
+		SCOPES.add(DirectoryScopes.ADMIN_DIRECTORY_GROUP_MEMBER);
 		// users 
 		SCOPES.add("https://www.googleapis.com/auth/admin.directory.user.readonly");
 		SCOPES.add("https://www.googleapis.com/auth/admin.directory.user");
 		SCOPES.add("https://www.googleapis.com/auth/drive.file");
 		SCOPES.add("https://www.googleapis.com/auth/drive.metadata");
 		SCOPES.add("https://www.googleapis.com/auth/drive.appdata");
-		
+
 		SCOPES.add("https://www.googleapis.com/auth/admin.reports.audit.readonly");
 
-		java.io.File clientSecretFilePath = new java.io.File(CREDENTIALS_FOLDER, CLIENT_SECRET_FILE_NAME);
-		if (!clientSecretFilePath.exists()) {
-			throw new FileNotFoundException("Please copy " + CLIENT_SECRET_FILE_NAME + " to folder: " + CREDENTIALS_FOLDER.getAbsolutePath());
+		//		java.io.File clientSecretFilePath = new java.io.File(CREDENTIALS_FOLDER, CLIENT_SECRET_FILE_NAME);
+		//		if (!clientSecretFilePath.exists()) {
+		//			throw new FileNotFoundException("Please copy " + CLIENT_SECRET_FILE_NAME + " to folder: " + CREDENTIALS_FOLDER.getAbsolutePath());
+		//		}
+		//		InputStream in = new FileInputStream(clientSecretFilePath);
+		//		GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+		//		GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(HTTP_TRANSPORT, JSON_FACTORY,
+		//				clientSecrets, SCOPES).setDataStoreFactory(new FileDataStoreFactory(CREDENTIALS_FOLDER)).setAccessType("offline").build();
+		//		return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
+
+		InputStream in = AdminSDKDirectoryQuickstart.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
+		if (in == null) {
+			throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
 		}
-		InputStream in = new FileInputStream(clientSecretFilePath);
 		GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-		GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(HTTP_TRANSPORT, JSON_FACTORY,
-				clientSecrets, SCOPES).setDataStoreFactory(new FileDataStoreFactory(CREDENTIALS_FOLDER)).setAccessType("offline").build();
-		return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
+
+		// Build flow and trigger user authorization request.
+		GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+				HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+				.setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+				.setAccessType("offline")
+				.build();
+		LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
+		return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
 	}
 
 	@Override
